@@ -18,16 +18,17 @@ const FIRAssistant = () => {
     try {
       // Call Gemini API
       const model = genAI.getGenerativeModel({ model: "gemini-pro"});
-      const prompt = `Based on the following incident description, provide recommendations for appropriate sections and acts for a First Information Report (FIR) in India:
+      const prompt = `First, identify the language of the following incident description. Then, based on the incident description, provide recommendations for appropriate sections and acts for a First Information Report (FIR) in India. Respond in the same language as the input:
 
       Incident: ${incidentDetails}
 
       Please provide:
-      1. Recommended sections of the Indian Penal Code (IPC) or other relevant laws
-      2. Brief explanations for why each section is applicable
-      3. Any additional acts or legal provisions that may be relevant
+      1. The identified language of the input
+      2. Recommended sections of the Indian Penal Code (IPC) or other relevant laws
+      3. Brief explanations for why each section is applicable
+      4. Any additional acts or legal provisions that may be relevant
 
-      Format the response in a clear, structured manner.`;
+      Format the response in a clear, structured manner, keeping all content in the identified language.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
@@ -41,16 +42,36 @@ const FIRAssistant = () => {
     }
   };
 
-  const handleVoiceInput = () => {
+  const requestMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (err) {
+      console.error('Error requesting microphone permission:', err);
+      return false;
+    }
+  };
+
+  const handleVoiceInput = async () => {
+    const permissionGranted = await requestMicrophonePermission();
+    if (!permissionGranted) {
+      setError('Microphone permission is required for voice input. Please grant permission and try again.');
+      return;
+    }
+
     if ('webkitSpeechRecognition' in window) {
       const recognition = new webkitSpeechRecognition();
-      recognition.lang = 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setIncidentDetails(transcript);
       };
-      recognition.onerror = () => {
-        setError('Speech recognition failed. Please try again or use text input.');
+      recognition.onerror = (event) => {
+        setError('Speech recognition failed: ' + event.error);
       };
       recognition.start();
     } else {
@@ -60,35 +81,26 @@ const FIRAssistant = () => {
 
   const formatRecommendations = (text) => {
     const sections = text.split('\n\n');
-    return sections.map((section, index) => {
-      if (section.startsWith('1. Recommended Sections')) {
-        return <h3 key={index} className="font-bold text-lg mt-4 mb-2">{section}</h3>;
-      }
-      const lines = section.split('\n');
-      return (
-        <div key={index} className="mb-4">
-          {lines.map((line, lineIndex) => {
-            if (line.startsWith('*')) {
-              return <p key={lineIndex} className="font-semibold mt-2">{line.replace('*', '').trim()}</p>;
-            }
-            return <p key={lineIndex} className="ml-4">{line.trim()}</p>;
-          })}
-        </div>
-      );
-    });
+    return sections.map((section, index) => (
+      <div key={index} className="mb-4">
+        {section.split('\n').map((line, lineIndex) => (
+          <p key={lineIndex} className={lineIndex === 0 ? "font-bold" : "ml-4"}>{line.trim()}</p>
+        ))}
+      </div>
+    ));
   };
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
       <div className="relative py-3 sm:max-w-xl sm:mx-auto">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-red-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
         <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
           <div className="max-w-md mx-auto">
-            <h1 className="text-2xl font-semibold mb-6 text-center">FIR Assistant.</h1>
+            <h1 className="text-2xl font-semibold mb-6 text-center">FIR Assistant</h1>
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="incidentDetails" className="block text-sm font-medium text-gray-700 mb-2">
-                  Describe the incident:
+                  Describe the incident (in any language):
                 </label>
                 <textarea
                   id="incidentDetails"
