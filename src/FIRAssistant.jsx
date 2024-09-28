@@ -18,17 +18,16 @@ const FIRAssistant = () => {
     try {
       // Call Gemini API
       const model = genAI.getGenerativeModel({ model: "gemini-pro"});
-      const prompt = `First, identify the language of the following incident description. Then, based on the incident description, provide recommendations for appropriate sections and acts for a First Information Report (FIR) in India. Respond in the same language as the input:
+      const prompt = `Based on the following incident description, provide recommendations for appropriate sections and acts for a First Information Report (FIR) in India:
 
       Incident: ${incidentDetails}
 
       Please provide:
-      1. The identified language of the input
-      2. Recommended sections of the Indian Penal Code (IPC) or other relevant laws
-      3. Brief explanations for why each section is applicable
-      4. Any additional acts or legal provisions that may be relevant
+      1. Recommended sections of the Indian Penal Code (IPC) or other relevant laws
+      2. Brief explanations for why each section is applicable
+      3. Any additional acts or legal provisions that may be relevant
 
-      Format the response in a clear, structured manner, keeping all content in the identified language.`;
+      Format the response in a clear, structured manner.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
@@ -42,52 +41,21 @@ const FIRAssistant = () => {
     }
   };
 
-  const requestMicrophonePermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (err) {
-      console.error('Error requesting microphone permission:', err);
-      return false;
-    }
-  };
-
-  const handleVoiceInput = async () => {
-    const permissionGranted = await requestMicrophonePermission();
-    if (!permissionGranted) {
-      setError('Microphone permission is required for voice input. Please grant permission and try again.');
-      return;
-    }
-
+  const handleVoiceInput = () => {
     if ('webkitSpeechRecognition' in window) {
       const recognition = new webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
+      recognition.lang = 'en-IN';
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setIncidentDetails(transcript);
       };
-      recognition.onerror = (event) => {
-        setError('Speech recognition failed: ' + event.error);
+      recognition.onerror = () => {
+        setError('Speech recognition failed. Please try again or use text input.');
       };
       recognition.start();
     } else {
       setError('Speech recognition is not supported in your browser. Please use text input.');
     }
-  };
-
-  const formatRecommendations = (text) => {
-    const sections = text.split('\n\n');
-    return sections.map((section, index) => (
-      <div key={index} className="mb-4">
-        {section.split('\n').map((line, lineIndex) => (
-          <p key={lineIndex} className={lineIndex === 0 ? "font-bold" : "ml-4"}>{line.trim()}</p>
-        ))}
-      </div>
-    ));
   };
 
   return (
@@ -100,7 +68,7 @@ const FIRAssistant = () => {
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="incidentDetails" className="block text-sm font-medium text-gray-700 mb-2">
-                  Describe the incident (in any language):
+                  Describe the incident:
                 </label>
                 <textarea
                   id="incidentDetails"
@@ -144,9 +112,9 @@ const FIRAssistant = () => {
             )}
             {recommendations && (
               <div className="mt-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">AI Recommendations:</h2>
-                <div className="bg-gray-50 p-6 rounded-md shadow-sm">
-                  {formatRecommendations(recommendations)}
+                <h2 className="text-lg font-medium text-gray-900 mb-2">AI Recommendations:</h2>
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <pre className="whitespace-pre-wrap">{recommendations}</pre>
                 </div>
               </div>
             )}
