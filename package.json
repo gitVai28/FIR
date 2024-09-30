@@ -14,9 +14,13 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.20.0",
+    "axios": "^1.7.7",
+    "googletrans": "^1.0.21",
+    "langdetect": "^0.2.1",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
